@@ -1,43 +1,34 @@
 /* ==========================================================================
    Bespoke Interactivity — Eva Luthfia Ramadhani Portfolio
-   Theme Switcher, Scroll Reveal Animations, Glowing Cursor & Case Studies
+   Smooth Scroll Reveal, Glowing Cursor, Micro Animations & Case Studies
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
 
-  /* --- 1. Theme Switcher System (Maroon, Purple, Navy) --- */
-  const themeBtns = document.querySelectorAll('.theme-btn');
-  const savedTheme = localStorage.getItem('eva_portfolio_theme') || 'maroon';
-
-  function setTheme(theme) {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('eva_portfolio_theme', theme);
-    themeBtns.forEach(btn => {
-      btn.classList.toggle('active', btn.getAttribute('data-set-theme') === theme);
-    });
-  }
-
-  // Set default / saved theme
-  setTheme(savedTheme);
-
-  themeBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const theme = btn.getAttribute('data-set-theme');
-      setTheme(theme);
-    });
-  });
-
-  /* --- 2. Glowing Cursor Follower --- */
+  /* --- 1. Smooth Glowing Cursor Follower --- */
   const cursorGlow = document.getElementById('cursor-glow');
+  let cursorX = 0, cursorY = 0;
+  let glowX = 0, glowY = 0;
+
   if (cursorGlow && window.innerWidth > 768) {
     document.addEventListener('mousemove', (e) => {
-      cursorGlow.style.left = `${e.clientX}px`;
-      cursorGlow.style.top = `${e.clientY}px`;
+      cursorX = e.clientX;
+      cursorY = e.clientY;
     });
+
+    // Smooth interpolation for buttery cursor movement
+    function animateCursor() {
+      glowX += (cursorX - glowX) * 0.08;
+      glowY += (cursorY - glowY) * 0.08;
+      cursorGlow.style.left = `${glowX}px`;
+      cursorGlow.style.top = `${glowY}px`;
+      requestAnimationFrame(animateCursor);
+    }
+    animateCursor();
   }
 
-  /* --- 3. Intersection Observer for Smooth Scroll Reveal --- */
-  const revealElements = document.querySelectorAll('.reveal-up, .reveal-left, .reveal-right');
+  /* --- 2. Enhanced Intersection Observer for Smooth Scroll Reveal --- */
+  const revealElements = document.querySelectorAll('.reveal-up, .reveal-left, .reveal-right, .reveal-scale');
 
   const revealObserver = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
@@ -46,42 +37,101 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }, {
-    threshold: 0.12,
-    rootMargin: '0px 0px -50px 0px'
+    threshold: 0.1,
+    rootMargin: '0px 0px -60px 0px'
   });
 
   revealElements.forEach(el => revealObserver.observe(el));
 
-  /* --- 4. Sticky Navbar & Active Nav Observer --- */
+  /* --- 3. Staggered reveal for grid children --- */
+  function addStaggerToChildren(parentSelector, childSelector) {
+    const parents = document.querySelectorAll(parentSelector);
+    parents.forEach(parent => {
+      const children = parent.querySelectorAll(childSelector);
+      children.forEach((child, index) => {
+        const staggerClass = `stagger-${Math.min(index + 1, 6)}`;
+        child.classList.add(staggerClass);
+      });
+    });
+  }
+
+  addStaggerToChildren('.about-grid', '.about-card');
+  addStaggerToChildren('.software-grid', '.software-pill');
+  addStaggerToChildren('.gallery-grid', '.gallery-card');
+  addStaggerToChildren('.contact-grid', '.contact-item');
+
+  /* --- 4. Smooth Number Counter Animation --- */
+  const statNumbers = document.querySelectorAll('.stat-number[data-count]');
+  
+  const counterObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const el = entry.target;
+        const target = parseInt(el.getAttribute('data-count'));
+        let current = 0;
+        const increment = Math.max(1, Math.floor(target / 30));
+        const duration = 1500;
+        const stepTime = duration / (target / increment);
+
+        const counter = setInterval(() => {
+          current += increment;
+          if (current >= target) {
+            current = target;
+            clearInterval(counter);
+          }
+          el.textContent = current + '+';
+        }, stepTime);
+
+        counterObserver.unobserve(el);
+      }
+    });
+  }, { threshold: 0.5 });
+
+  statNumbers.forEach(el => counterObserver.observe(el));
+
+  /* --- 5. Sticky Navbar with Smooth Transition & Active Nav Observer --- */
   const navbar = document.getElementById('navbar');
   const navLinks = document.querySelectorAll('.nav-link');
   const sections = document.querySelectorAll('section');
 
+  let lastScrollY = 0;
+  let ticking = false;
+
   window.addEventListener('scroll', () => {
-    if (window.scrollY > 40) {
-      navbar.classList.add('scrolled');
-    } else {
-      navbar.classList.remove('scrolled');
+    lastScrollY = window.scrollY;
+    if (!ticking) {
+      requestAnimationFrame(() => {
+        // Navbar background
+        if (lastScrollY > 40) {
+          navbar.classList.add('scrolled');
+        } else {
+          navbar.classList.remove('scrolled');
+        }
+
+        // Active section tracking
+        let current = '';
+        sections.forEach(section => {
+          const sectionTop = section.offsetTop - 120;
+          const sectionHeight = section.offsetHeight;
+          if (lastScrollY >= sectionTop && lastScrollY < sectionTop + sectionHeight) {
+            current = section.getAttribute('id');
+          }
+        });
+
+        navLinks.forEach(link => {
+          link.classList.remove('active');
+          if (link.getAttribute('href') === `#${current}`) {
+            link.classList.add('active');
+          }
+        });
+
+        ticking = false;
+      });
+      ticking = true;
     }
-
-    let current = '';
-    sections.forEach(section => {
-      const sectionTop = section.offsetTop - 120;
-      const sectionHeight = section.offsetHeight;
-      if (window.scrollY >= sectionTop && window.scrollY < sectionTop + sectionHeight) {
-        current = section.getAttribute('id');
-      }
-    });
-
-    navLinks.forEach(link => {
-      link.classList.remove('active');
-      if (link.getAttribute('href') === `#${current}`) {
-        link.classList.add('active');
-      }
-    });
   });
 
-  /* --- 5. Mobile Menu Toggle --- */
+  /* --- 6. Mobile Menu Toggle with Smooth Animation --- */
   const navToggle = document.getElementById('nav-toggle');
   const navMenu = document.getElementById('nav-menu');
 
@@ -91,8 +141,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const icon = navToggle.querySelector('i');
       if (navMenu.classList.contains('open')) {
         icon.classList.replace('fa-bars', 'fa-xmark');
+        icon.style.transform = 'rotate(180deg)';
       } else {
         icon.classList.replace('fa-xmark', 'fa-bars');
+        icon.style.transform = 'rotate(0deg)';
       }
     });
 
@@ -100,12 +152,15 @@ document.addEventListener('DOMContentLoaded', () => {
       link.addEventListener('click', () => {
         navMenu.classList.remove('open');
         const icon = navToggle.querySelector('i');
-        if (icon) icon.classList.replace('fa-xmark', 'fa-bars');
+        if (icon) {
+          icon.classList.replace('fa-xmark', 'fa-bars');
+          icon.style.transform = 'rotate(0deg)';
+        }
       });
     });
   }
 
-  /* --- 6. Full-Screen Case Study Overlay --- */
+  /* --- 7. Full-Screen Case Study Overlay with Smooth Entry --- */
   const csOverlay = document.getElementById('case-study-overlay');
   const csContainer = document.getElementById('cs-container');
   const csClose = document.getElementById('cs-close');
@@ -314,7 +369,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'Escape') closeCsOverlay();
   });
 
-  /* --- 7. Copy Email with Toast Alert --- */
+  /* --- 8. Copy Email with Toast Alert --- */
   const copyBtn = document.getElementById('copy-email-btn');
   const emailVal = document.getElementById('email-value');
   const toast = document.getElementById('toast');
@@ -339,7 +394,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 3000);
   }
 
-  /* --- 8. Design Gallery Filter --- */
+  /* --- 9. Design Gallery Filter with Smooth Transition --- */
   const filterBtns = document.querySelectorAll('.filter-btn');
   const galleryCards = document.querySelectorAll('.gallery-card');
 
@@ -350,14 +405,40 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const filter = btn.getAttribute('data-filter');
 
-      galleryCards.forEach(card => {
+      galleryCards.forEach((card, index) => {
         const cat = card.getAttribute('data-category');
         if (filter === 'all' || cat === filter) {
+          card.style.opacity = '0';
+          card.style.transform = 'translateY(15px)';
           card.style.display = 'flex';
+          // Staggered fade-in
+          setTimeout(() => {
+            card.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+          }, index * 80);
         } else {
-          card.style.display = 'none';
+          card.style.transition = 'opacity 0.25s ease';
+          card.style.opacity = '0';
+          setTimeout(() => {
+            card.style.display = 'none';
+          }, 250);
         }
       });
+    });
+  });
+
+  /* --- 10. Smooth Scroll for all anchor links --- */
+  document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function (e) {
+      const target = document.querySelector(this.getAttribute('href'));
+      if (target) {
+        e.preventDefault();
+        target.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start'
+        });
+      }
     });
   });
 
